@@ -7,30 +7,25 @@ Original file is located at
     https://colab.research.google.com/drive/19c6plKWouFcvZ5SHx9oyaj1HpkcNTCgu
 """
 
-pip install tensorflow
-
+# Import necessary libraries
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-import tensorflow.keras.utils
-from tensorflow.python.keras.models import Sequential,Model
-from keras.layers import Input, Dense
-from keras.models import Model
-from keras import optimizers
-import datetime
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import classification_report, confusion_matrix , ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix
 import seaborn as sb
 import pandas as pd
+import datetime
 
+# Define PCA class
 class PCA:
     def __init__(self, n_components):
         self.n_components = n_components
         self.components = None
         self.mean = None
+
     def fit(self, X):
         self.mean = np.mean(X, axis=0)
         X = X - self.mean
@@ -41,97 +36,102 @@ class PCA:
         eigenvalues = eigenvalues[idxs]
         eigenvectors = eigenvectors[idxs]
         self.components = eigenvectors[0:self.n_components]
+
     def transform(self, X):
         X = X - self.mean
         return np.dot(X, self.components.T)
 
-cifar10=keras.datasets.cifar10
-(x_train,y_train),(x_test,y_test)=cifar10.load_data()
+# Load the CIFAR-10 dataset
+cifar10 = keras.datasets.cifar10
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-class_names=['plane','car','bird','cat','deer','dog','frog','horse','ship','truck']
-Class_Names=np.array(class_names)
+# Class names for CIFAR-10 dataset
+class_names = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+Class_Names = np.array(class_names)
 
+# Display a sample image
 plt.imshow(x_train[150])
 
-print(np.max(x_train))
-print(np.max(x_test))
+# Normalize the data
+x_train = x_train / 255
+x_test = x_test / 255
 
-x_train = x_train/255
-x_test = x_test/255
-
-plt.figure(figsize=(10,5))
+# Visualize some training images
+plt.figure(figsize=(10, 5))
 for i in range(10):
-  plt.subplot(2,5,i+1)
-  plt.xticks([])
-  plt.yticks([])
-  plt.imshow(x_train[i],cmap=plt.cm.binary)
-  plt.xlabel(Class_Names[y_train[i]])
+    plt.subplot(2, 5, i + 1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.imshow(x_train[i], cmap=plt.cm.binary)
+    plt.xlabel(Class_Names[y_train[i][0]])
 plt.show()
 
-print(x_train.shape)
-print(x_test.shape)
+# Reshape the data
+x_train = x_train.reshape(50000, 32 * 32 * 3).astype('float32') / 255
+x_test = x_test.reshape(10000, 32 * 32 * 3).astype('float32') / 255
 
-x_train = x_train.reshape(50000,32*32*3).astype('float32')/255
-x_test = x_test.reshape(10000,32*32*3).astype('float32')/255
+# One-hot encode the labels
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)
 
-y_train=to_categorical(y_train,10)
-y_test=to_categorical(y_test,10)
-
+# Apply PCA to reduce dimensionality
 MyPCA = PCA(200)
 MyPCA.fit(x_train)
-X_test = MyPCA.transform(x_train)
+X_train_pca = MyPCA.transform(x_train)
+X_test_pca = MyPCA.transform(x_test)
 
-x_train.shape
+# Define the Neural Network model
+neuron_L1 = 256
+neuron_L2 = 64
 
-X_test.shape
-
-print(y_train.shape)
-print(y_test.shape)
-
-neuron_L1=256
-neuron_L2=64
-
-Model= tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(32*32*3,)),
+Model = tf.keras.models.Sequential([
+    tf.keras.layers.Flatten(input_shape=(32 * 32 * 3,)),
     tf.keras.layers.Dense(neuron_L1, activation='relu'),
     tf.keras.layers.Dense(neuron_L2, activation='relu'),
-    tf.keras.layers.Dense(10, activation='softmax')])
+    tf.keras.layers.Dense(10, activation='softmax')
+])
+
+# Compile the model
 Model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 Model.summary()
 
-batch_size=256
-epochs=60
+# Train the model
+batch_size = 256
+epochs = 60
 
-t0=datetime.datetime.now()
-history= Model.fit(x_train, y_train,
-                    epochs=epochs,
-                    batch_size=batch_size,
-                    validation_split=0.2)
-t1=datetime.datetime.now()
+t0 = datetime.datetime.now()
+history = Model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2)
+t1 = datetime.datetime.now()
 
+# Evaluate the model
 val_loss, val_acc = Model.evaluate(x_test, y_test)
-print('Accuracy = ',val_acc*100,'%')
-print('Time = ',t1-t0)
+print('Accuracy = ', val_acc * 100, '%')
+print('Time = ', t1 - t0)
 
-i=Model.predict(x_test)
-i=np.argmax(i,axis=1)
-ii=np.argmax(y_test,axis=1)
-q=confusion_matrix(ii,i)
-df_cm = pd.DataFrame(q, index = ['plane','car','bird','cat','deer','dog','frog','horse','ship','truck'],
-                  columns = ['plane','car','bird','cat','deer','dog','frog','horse','ship','truck'])
-sb.heatmap(df_cm, annot=True , cmap='Blues', fmt=".1f",annot_kws={'size':10})
+# Generate predictions
+predictions = Model.predict(x_test)
+predicted_labels = np.argmax(predictions, axis=1)
+true_labels = np.argmax(y_test, axis=1)
+
+# Plot confusion matrix
+cm = confusion_matrix(true_labels, predicted_labels)
+df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
+sb.heatmap(df_cm, annot=True, cmap='Blues', fmt=".1f", annot_kws={'size':10})
 plt.figure()
 
+# Plot training history
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.xlabel('epoch')
 plt.ylabel('loss')
 plt.title('Model Loss')
 plt.legend(['train', 'validation'], loc='upper left')
+plt.show()
 
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
-plt.title(' Model Accuracy')
+plt.title('Model Accuracy')
 plt.xlabel('epoch')
 plt.ylabel('accuracy')
 plt.legend(['train', 'validation'], loc='upper left')
+plt.show()
