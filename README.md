@@ -2,7 +2,7 @@
 # CIFAR-10 Image Classification with PCA and Neural Network
 # by Sara Afshar
 
-This project demonstrates the process of image classification on the CIFAR-10 dataset using Principal Component Analysis (PCA) and a Neural Network model. The CIFAR-10 dataset consists of 60,000 32x32 color images in 10 classes, with 6,000 images per class.
+This project demonstrates image classification on the CIFAR-10 dataset using Principal Component Analysis (PCA) and a Neural Network model. The CIFAR-10 dataset contains 60,000 32x32 color images in 10 classes. The project involves loading and preprocessing the dataset, applying PCA for dimensionality reduction, and training a neural network model to classify the images. The model's performance is evaluated using metrics such as accuracy and confusion matrix, and the results are visualized to provide insights into the classification process.
 
 ## Overview
 
